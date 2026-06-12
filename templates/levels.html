@@ -1,0 +1,799 @@
+{% extends "base.html" %}
+{% block title %}Level {{ level_num }} — {{ level.title }} | SQL Detective{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .game-layout {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        min-height: calc(100vh - 56px);
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+        background: #0c0c0c;
+        border-right: 1px solid var(--border);
+        padding: 1.5rem 1rem;
+        position: sticky;
+        top: 56px;
+        height: calc(100vh - 56px);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .sidebar-title {
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 3px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        padding: 0 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .level-pill {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+        border: 1px solid transparent;
+    }
+
+    .level-pill:hover { background: rgba(255,255,255,0.03); }
+    .level-pill.active {
+        background: rgba(192, 57, 43, 0.08);
+        border-color: var(--red-dim);
+    }
+    .level-pill.completed { opacity: 0.6; }
+
+    .level-pill-num {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        color: var(--text-dim);
+        width: 20px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+    .level-pill.active .level-pill-num { color: var(--red-bright); }
+
+    .level-pill-name {
+        font-family: var(--font-typewriter);
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .level-pill.active .level-pill-name { color: var(--text-primary); }
+
+    .level-pill-status {
+        font-size: 0.7rem;
+        flex-shrink: 0;
+    }
+
+    .sidebar-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 0.5rem 0;
+    }
+
+    .mystery-link {
+        margin-top: auto;
+        background: rgba(192, 57, 43, 0.08);
+        border: 1px solid var(--red-dim);
+        padding: 10px;
+        text-align: center;
+        text-decoration: none;
+        font-family: var(--font-typewriter);
+        font-size: 0.8rem;
+        color: var(--red-bright);
+        letter-spacing: 1px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .mystery-link:hover { background: rgba(192, 57, 43, 0.15); }
+
+    /* ── MAIN AREA ── */
+    .main-area {
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        max-width: 960px;
+    }
+
+    /* Case header */
+    .case-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        animation: fadeIn 0.4s ease;
+    }
+
+    .case-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .case-level-tag {
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 4px;
+        color: var(--red-dim);
+        text-transform: uppercase;
+    }
+
+    .case-title {
+        font-family: var(--font-display);
+        font-size: 2.2rem;
+        letter-spacing: 3px;
+        line-height: 1;
+        color: var(--text-primary);
+    }
+
+    .case-subtitle {
+        font-family: var(--font-typewriter);
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        letter-spacing: 1px;
+    }
+
+    .concept-badge {
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        letter-spacing: 2px;
+        color: var(--amber);
+        border: 1px solid var(--amber-dim);
+        padding: 6px 14px;
+        white-space: nowrap;
+        text-transform: uppercase;
+    }
+
+    /* Story card */
+    .story-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--red-dim);
+        padding: 1.5rem;
+        animation: fadeIn 0.4s ease 0.1s both;
+    }
+
+    .story-label {
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 3px;
+        color: var(--red-dim);
+        text-transform: uppercase;
+        margin-bottom: 0.8rem;
+    }
+
+    .story-text {
+        font-family: var(--font-typewriter);
+        font-size: 1rem;
+        color: var(--text-secondary);
+        line-height: 1.8;
+        white-space: pre-line;
+    }
+
+    .task-box {
+        background: rgba(212, 160, 23, 0.05);
+        border: 1px solid var(--amber-dim);
+        padding: 1rem 1.2rem;
+        margin-top: 1rem;
+        font-family: var(--font-typewriter);
+        font-size: 0.95rem;
+        color: var(--text-primary);
+    }
+
+    .task-label {
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 3px;
+        color: var(--amber-dim);
+        text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+
+    /* Editor block */
+    .editor-block {
+        animation: fadeIn 0.4s ease 0.2s both;
+    }
+
+    .editor-label {
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 3px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .editor-label::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+    }
+
+    .editor-wrapper {
+        background: var(--bg-editor);
+        border: 1px solid var(--border-bright);
+        position: relative;
+        font-family: var(--font-mono);
+    }
+
+    .editor-topbar {
+        background: #111;
+        border-bottom: 1px solid var(--border);
+        padding: 6px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .editor-dot {
+        width: 10px; height: 10px;
+        border-radius: 50%;
+    }
+    .dot-red { background: #c0392b; }
+    .dot-yellow { background: #d4a017; }
+    .dot-green { background: #27ae60; }
+
+    .editor-filename {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        color: var(--text-dim);
+        letter-spacing: 1px;
+        margin-left: 4px;
+    }
+
+    .editor-inner {
+        display: flex;
+    }
+
+    .line-numbers {
+        padding: 12px 0;
+        background: rgba(0,0,0,0.3);
+        border-right: 1px solid var(--border);
+        min-width: 40px;
+        text-align: right;
+        user-select: none;
+        font-size: 0.8rem;
+        color: var(--text-dim);
+        line-height: 1.6;
+    }
+
+    .line-numbers span {
+        display: block;
+        padding: 0 10px;
+    }
+
+    #sql-editor {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        padding: 12px 16px;
+        color: var(--amber);
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+        line-height: 1.6;
+        resize: none;
+        min-height: 140px;
+        caret-color: var(--red-bright);
+        tab-size: 4;
+        spellcheck: false;
+        width: 100%;
+    }
+
+    #sql-editor::placeholder { color: var(--text-dim); }
+    #sql-editor:focus { outline: none; }
+
+    /* Editor button row */
+    .editor-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+        align-items: center;
+    }
+
+    .btn-run {
+        font-family: var(--font-typewriter);
+        font-size: 0.85rem;
+        letter-spacing: 2px;
+        background: var(--red);
+        color: #fff;
+        border: 1px solid var(--red-bright);
+        padding: 9px 28px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-run:hover { background: var(--red-bright); transform: translateY(-1px); }
+    .btn-run:active { transform: translateY(0); }
+
+    .btn-reset-editor {
+        font-family: var(--font-typewriter);
+        font-size: 0.85rem;
+        letter-spacing: 2px;
+        background: transparent;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-bright);
+        padding: 9px 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-transform: uppercase;
+    }
+    .btn-reset-editor:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+
+    .btn-hint {
+        font-family: var(--font-typewriter);
+        font-size: 0.8rem;
+        letter-spacing: 1px;
+        background: transparent;
+        color: var(--amber);
+        border: 1px solid var(--amber-dim);
+        padding: 9px 18px;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .btn-hint:hover { background: rgba(212, 160, 23, 0.1); }
+
+    /* Results area */
+    .results-area {
+        animation: fadeIn 0.3s ease;
+    }
+
+    .results-label {
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 3px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .result-count {
+        font-size: 0.65rem;
+        color: var(--green);
+        letter-spacing: 1px;
+    }
+
+    .result-table-wrap {
+        overflow-x: auto;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+    }
+
+    table.result-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+    }
+
+    table.result-table th {
+        background: #111;
+        color: var(--amber);
+        padding: 8px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-bright);
+        letter-spacing: 1px;
+        white-space: nowrap;
+        font-weight: normal;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+    }
+
+    table.result-table td {
+        padding: 7px 14px;
+        color: var(--text-secondary);
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+        white-space: nowrap;
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    table.result-table tr:last-child td { border-bottom: none; }
+    table.result-table tr:hover td { background: rgba(255,255,255,0.02); color: var(--text-primary); }
+
+    .error-box {
+        background: rgba(192, 57, 43, 0.08);
+        border: 1px solid var(--red-dim);
+        border-left: 3px solid var(--red-bright);
+        padding: 12px 16px;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        color: var(--red-bright);
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .success-box {
+        background: rgba(39, 174, 96, 0.08);
+        border: 1px solid var(--green);
+        border-left: 3px solid var(--green-bright);
+        padding: 14px 16px;
+        font-family: var(--font-typewriter);
+        font-size: 0.95rem;
+        color: var(--green-bright);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .info-box {
+        background: rgba(212, 160, 23, 0.05);
+        border: 1px solid var(--amber-dim);
+        border-left: 3px solid var(--amber);
+        padding: 12px 16px;
+        font-family: var(--font-typewriter);
+        font-size: 0.92rem;
+        color: var(--amber);
+        margin-bottom: 0.5rem;
+    }
+
+    .hint-box {
+        background: rgba(212, 160, 23, 0.05);
+        border: 1px solid var(--amber-dim);
+        padding: 14px 16px;
+        font-family: var(--font-typewriter);
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        animation: fadeIn 0.3s ease;
+    }
+
+    .hint-box .hint-header {
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 3px;
+        color: var(--amber);
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }
+
+    .next-level-btn {
+        font-family: var(--font-typewriter);
+        font-size: 0.9rem;
+        letter-spacing: 2px;
+        background: var(--green);
+        color: #fff;
+        border: none;
+        padding: 10px 24px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-transform: uppercase;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .next-level-btn:hover { background: var(--green-bright); transform: translateY(-1px); }
+
+    .progress-bar {
+        height: 3px;
+        background: var(--border);
+        margin-bottom: 1rem;
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--red-dim), var(--red-bright));
+        transition: width 0.5s ease;
+        border-radius: 2px;
+    }
+
+    #hint-area { display: none; }
+    #results-area { display: none; }
+
+    @media (max-width: 768px) {
+        .game-layout { grid-template-columns: 1fr; }
+        .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; overflow-x: auto; padding: 0.75rem; }
+        .sidebar-title, .sidebar-divider, .mystery-link { display: none; }
+        .level-pill { padding: 5px 8px; min-width: 80px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="game-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-title">// CASE FILES</div>
+        {% for i in range(total_levels) %}
+        <a href="/level/{{ i }}"
+           class="level-pill {% if i == level_num %}active{% elif i in completed %}completed{% endif %}">
+            <span class="level-pill-num">{{ i }}</span>
+            <span class="level-pill-name">
+                {% if i == 0 %}First Steps
+                {% elif i == 1 %}Where Clause
+                {% elif i == 2 %}AND / OR
+                {% elif i == 3 %}Inner Join
+                {% elif i == 4 %}Multi Join
+                {% elif i == 5 %}Group By
+                {% elif i == 6 %}Order By
+                {% elif i == 7 %}LIMIT
+                {% elif i == 8 %}Subqueries
+                {% elif i == 9 %}LIKE / BETWEEN
+                {% elif i == 10 %}Final Training
+                {% endif %}
+            </span>
+            <span class="level-pill-status">
+                {% if i in completed %}✓
+                {% elif i == level_num %}▶
+                {% else %}·
+                {% endif %}
+            </span>
+        </a>
+        {% if i == 9 %}
+        <div class="sidebar-divider"></div>
+        {% endif %}
+        {% endfor %}
+
+        {% if completed|length >= 5 %}
+        <a href="/mystery" class="mystery-link">
+            🔍 OPEN MURDER CASE
+        </a>
+        {% endif %}
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-area">
+
+        <!-- Progress bar -->
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ ((completed|length) / total_levels * 100)|int }}%"></div>
+        </div>
+
+        <!-- Case header -->
+        <div class="case-header">
+            <div class="case-meta">
+                <div class="case-level-tag">▸ LEVEL {{ level_num }} &nbsp;/&nbsp; {{ total_levels - 1 }}</div>
+                <div class="case-title">{{ level.title | upper }}</div>
+                <div class="case-subtitle">{{ level.subtitle }}</div>
+            </div>
+            <div class="concept-badge">{{ level.concept }}</div>
+        </div>
+
+        <!-- Story card -->
+        <div class="story-card">
+            <div class="story-label">▸ CASE BRIEFING</div>
+            <div class="story-text">{{ level.story }}</div>
+            <div class="task-box">
+                <div class="task-label">▸ YOUR MISSION</div>
+                {{ level.task | safe }}
+            </div>
+        </div>
+
+        <!-- SQL Editor -->
+        <div class="editor-block">
+            <div class="editor-label">▸ QUERY TERMINAL</div>
+            <div class="editor-wrapper">
+                <div class="editor-topbar">
+                    <div class="editor-dot dot-red"></div>
+                    <div class="editor-dot dot-yellow"></div>
+                    <div class="editor-dot dot-green"></div>
+                    <span class="editor-filename">investigation_{{ level_num }}.sql</span>
+                </div>
+                <div class="editor-inner">
+                    <div class="line-numbers" id="line-numbers">
+                        <span>1</span>
+                    </div>
+                    <textarea
+                        id="sql-editor"
+                        spellcheck="false"
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"
+                        placeholder="-- Enter your SQL query here...&#10;SELECT "></textarea>
+                </div>
+            </div>
+
+            <div class="editor-actions">
+                <button class="btn-reset-editor" onclick="resetEditor()">↺ RESET</button>
+                <button class="btn-run" onclick="runQuery()">▶ RUN QUERY</button>
+                <button class="btn-hint" onclick="getHint()">💡 HINT <span id="hint-cost">(-25 XP)</span></button>
+            </div>
+        </div>
+
+        <!-- Hint area -->
+        <div id="hint-area">
+            <div class="hint-box">
+                <div class="hint-header">▸ DETECTIVE'S HINT</div>
+                <div id="hint-text"></div>
+            </div>
+        </div>
+
+        <!-- Results area -->
+        <div id="results-area" class="results-area">
+            <div class="results-label">
+                <span>▸ QUERY RESULTS</span>
+                <span class="result-count" id="result-count"></span>
+            </div>
+            <div id="results-content"></div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+const LEVEL_NUM = {{ level_num }};
+const TOTAL_LEVELS = {{ total_levels }};
+
+// ── LINE NUMBERS ──────────────────────────────────────────────────────
+const editor = document.getElementById('sql-editor');
+const lineNums = document.getElementById('line-numbers');
+
+function updateLineNumbers() {
+    const lines = editor.value.split('\n').length;
+    lineNums.innerHTML = Array.from({length: lines}, (_, i) =>
+        `<span>${i + 1}</span>`
+    ).join('');
+}
+
+editor.addEventListener('input', updateLineNumbers);
+editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        editor.value = editor.value.substring(0, start) + '    ' + editor.value.substring(end);
+        editor.selectionStart = editor.selectionEnd = start + 4;
+        updateLineNumbers();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        runQuery();
+    }
+});
+
+updateLineNumbers();
+
+// ── RESET ─────────────────────────────────────────────────────────────
+function resetEditor() {
+    editor.value = '';
+    updateLineNumbers();
+    document.getElementById('results-area').style.display = 'none';
+    document.getElementById('hint-area').style.display = 'none';
+}
+
+// ── HINT ──────────────────────────────────────────────────────────────
+async function getHint() {
+    const res = await fetch(`/api/hint/${LEVEL_NUM}`);
+    const data = await res.json();
+    document.getElementById('hint-area').style.display = 'block';
+    document.getElementById('hint-text').innerHTML = data.hint;
+    if (data.penalty > 0) {
+        updateScore(data.score);
+    }
+}
+
+function updateScore(score) {
+    const el = document.querySelector('.score-display');
+    if (el) el.textContent = `XP: ${score}`;
+}
+
+// ── RUN QUERY ─────────────────────────────────────────────────────────
+async function runQuery() {
+    const query = editor.value.trim();
+    if (!query) return;
+
+    const btn = document.querySelector('.btn-run');
+    btn.textContent = '⏳ RUNNING...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/validate_level', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({query, level_num: LEVEL_NUM})
+        });
+        const data = await res.json();
+
+        const resultsArea = document.getElementById('results-area');
+        const resultsContent = document.getElementById('results-content');
+        const resultCount = document.getElementById('result-count');
+        resultsArea.style.display = 'block';
+
+        if (data.error) {
+            resultCount.textContent = '';
+            resultsContent.innerHTML = `
+                <div class="error-box">
+                    <span>⚠</span>
+                    <span><strong>SQL ERROR:</strong> ${escapeHtml(data.error)}</span>
+                </div>`;
+        } else if (data.passed) {
+            updateScore(data.score);
+            resultCount.textContent = `${data.count} ROW(S) RETURNED`;
+            
+            let html = `<div class="success-box">
+                <div>✔ ${data.message}</div>`;
+            
+            if (data.next_level <= TOTAL_LEVELS - 1 && data.next_level < 11) {
+                html += `<a href="/level/${data.next_level}" class="next-level-btn">
+                    NEXT CASE →
+                </a>`;
+            } else {
+                html += `<a href="/mystery" class="next-level-btn">
+                    🔍 OPEN THE MURDER CASE →
+                </a>`;
+            }
+            html += `</div>`;
+
+            if (data.columns && data.columns.length > 0) {
+                html += renderTable(data.columns, data.rows);
+            }
+            resultsContent.innerHTML = html;
+        } else {
+            resultCount.textContent = data.count ? `${data.count} ROW(S) RETURNED` : '';
+            let html = '';
+            if (data.message) {
+                html += `<div class="info-box">⚠ ${data.message}</div>`;
+            }
+            if (data.columns && data.columns.length > 0) {
+                html += renderTable(data.columns, data.rows);
+            } else if (!data.message) {
+                html += `<div class="error-box"><span>⚠</span><span>No results returned. Check your query.</span></div>`;
+            }
+            resultsContent.innerHTML = html;
+        }
+    } catch(e) {
+        document.getElementById('results-area').style.display = 'block';
+        document.getElementById('results-content').innerHTML = `
+            <div class="error-box"><span>⚠</span><span>Network error. Please try again.</span></div>`;
+    } finally {
+        btn.innerHTML = '▶ RUN QUERY';
+        btn.disabled = false;
+    }
+}
+
+function renderTable(columns, rows) {
+    if (!rows || rows.length === 0) return '<div class="info-box">Query returned 0 rows.</div>';
+    let html = '<div class="result-table-wrap"><table class="result-table"><thead><tr>';
+    columns.forEach(c => { html += `<th>${escapeHtml(c)}</th>`; });
+    html += '</tr></thead><tbody>';
+    rows.forEach(row => {
+        html += '<tr>';
+        row.forEach(cell => {
+            html += `<td title="${escapeHtml(String(cell ?? ''))}">${escapeHtml(String(cell ?? 'NULL'))}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+{% endblock %}

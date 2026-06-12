@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+{% block title %}SQL Detective — SQL City Homicide Division{% endblock %}
+
+{% block navbar %}{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .home-wrap {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        background: #000;
+    }
+
+    /* Cinematic vignette */
+    .home-wrap::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.85) 100%);
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    /* Rain effect canvas */
+    #rain-canvas {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        opacity: 0.15;
+    }
+
+    /* City skyline silhouette */
+    .city-silhouette {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 220px;
+        z-index: 0;
+        background: 
+            linear-gradient(to top, #000 0%, transparent 100%),
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1400 220'%3E%3Crect fill='%23050505' x='0' y='80' width='60' height='140'/%3E%3Crect fill='%23050505' x='50' y='40' width='40' height='180'/%3E%3Crect fill='%23050505' x='80' y='60' width='70' height='160'/%3E%3Crect fill='%23050505' x='140' y='20' width='50' height='200'/%3E%3Crect fill='%23050505' x='180' y='50' width='80' height='170'/%3E%3Crect fill='%23050505' x='250' y='70' width='45' height='150'/%3E%3Crect fill='%23050505' x='285' y='30' width='60' height='190'/%3E%3Crect fill='%23050505' x='335' y='55' width='90' height='165'/%3E%3Crect fill='%23050505' x='415' y='10' width='55' height='210'/%3E%3Crect fill='%23050505' x='460' y='45' width='75' height='175'/%3E%3Crect fill='%23050505' x='525' y='65' width='50' height='155'/%3E%3Crect fill='%23050505' x='565' y='25' width='65' height='195'/%3E%3Crect fill='%23050505' x='620' y='50' width='85' height='170'/%3E%3Crect fill='%23050505' x='695' y='15' width='50' height='205'/%3E%3Crect fill='%23050505' x='735' y='60' width='70' height='160'/%3E%3Crect fill='%23050505' x='795' y='35' width='60' height='185'/%3E%3Crect fill='%23050505' x='845' y='55' width='80' height='165'/%3E%3Crect fill='%23050505' x='915' y='20' width='55' height='200'/%3E%3Crect fill='%23050505' x='960' y='70' width='75' height='150'/%3E%3Crect fill='%23050505' x='1025' y='40' width='65' height='180'/%3E%3Crect fill='%23050505' x='1080' y='55' width='90' height='165'/%3E%3Crect fill='%23050505' x='1160' y='25' width='50' height='195'/%3E%3Crect fill='%23050505' x='1200' y='50' width='70' height='170'/%3E%3Crect fill='%23050505' x='1260' y='35' width='60' height='185'/%3E%3Crect fill='%23050505' x='1310' y='60' width='90' height='160'/%3E%3C/svg%3E") bottom/cover no-repeat;
+    }
+
+    /* Flickering streetlight */
+    .street-light {
+        position: fixed;
+        width: 3px;
+        height: 180px;
+        background: linear-gradient(to bottom, var(--amber-dim), #000);
+        bottom: 100px;
+        left: 12%;
+        z-index: 0;
+        animation: flicker 4s infinite;
+    }
+    .street-light::after {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: -8px;
+        width: 20px;
+        height: 20px;
+        background: radial-gradient(circle, var(--amber) 0%, transparent 70%);
+        animation: flicker 4s infinite;
+    }
+
+    /* Content */
+    .home-content {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+        padding: 2rem;
+        max-width: 700px;
+    }
+
+    .precinct-tag {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        letter-spacing: 5px;
+        color: var(--red-dim);
+        text-transform: uppercase;
+        margin-bottom: 1.5rem;
+        animation: fadeIn 1s ease 0.2s both;
+    }
+
+    .home-logo {
+        font-family: var(--font-display);
+        font-size: clamp(4rem, 12vw, 9rem);
+        line-height: 0.9;
+        letter-spacing: 6px;
+        margin-bottom: 0.5rem;
+        animation: fadeIn 1s ease 0.4s both;
+        text-shadow: 0 0 60px rgba(192, 57, 43, 0.3);
+    }
+
+    .home-logo .sql { color: var(--text-primary); }
+    .home-logo .detective {
+        color: var(--red-bright);
+        display: block;
+        text-shadow: 0 0 40px rgba(231, 76, 60, 0.5);
+    }
+
+    .divider-ornament {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        justify-content: center;
+        margin: 1.5rem 0;
+        animation: fadeIn 1s ease 0.6s both;
+    }
+
+    .divider-ornament::before,
+    .divider-ornament::after {
+        content: '';
+        height: 1px;
+        width: 80px;
+        background: linear-gradient(90deg, transparent, var(--red-dim));
+    }
+    .divider-ornament::after {
+        background: linear-gradient(270deg, transparent, var(--red-dim));
+    }
+
+    .divider-ornament span {
+        color: var(--red-bright);
+        font-size: 1.2rem;
+    }
+
+    .home-tagline {
+        font-family: var(--font-typewriter);
+        font-size: 1.1rem;
+        color: var(--text-secondary);
+        line-height: 1.7;
+        margin-bottom: 0.8rem;
+        animation: fadeIn 1s ease 0.7s both;
+        letter-spacing: 0.5px;
+    }
+
+    .home-tagline .highlight {
+        color: var(--amber);
+        font-style: italic;
+    }
+
+    .case-stamp {
+        display: inline-block;
+        font-family: var(--font-typewriter);
+        font-size: 0.75rem;
+        color: var(--red-dim);
+        border: 2px solid var(--red-dim);
+        padding: 4px 12px;
+        letter-spacing: 3px;
+        transform: rotate(-2deg);
+        margin-bottom: 2.5rem;
+        animation: fadeIn 1s ease 0.9s both;
+    }
+
+    .start-btn {
+        font-family: var(--font-display);
+        font-size: 1.4rem;
+        letter-spacing: 6px;
+        background: transparent;
+        color: var(--text-primary);
+        border: 2px solid var(--red);
+        padding: 16px 60px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-block;
+        animation: fadeIn 1s ease 1.1s both;
+    }
+
+    .start-btn::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: var(--red);
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: -1;
+    }
+
+    .start-btn:hover::before { transform: translateX(0); }
+    .start-btn:hover {
+        color: #fff;
+        box-shadow: 0 0 40px rgba(192, 57, 43, 0.5), 0 0 80px rgba(192, 57, 43, 0.2);
+        letter-spacing: 8px;
+    }
+
+    .features-row {
+        display: flex;
+        gap: 1.5rem;
+        justify-content: center;
+        margin-top: 3rem;
+        animation: fadeIn 1s ease 1.3s both;
+    }
+
+    .feature-pill {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        letter-spacing: 2px;
+        color: var(--text-dim);
+        border: 1px solid var(--border);
+        padding: 6px 14px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .feature-pill .dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--red-dim);
+    }
+
+    /* Rotating case file in corner */
+    .corner-file {
+        position: fixed;
+        bottom: 3rem;
+        right: 3rem;
+        z-index: 2;
+        transform: rotate(6deg);
+        opacity: 0.3;
+        animation: fadeIn 2s ease 2s both;
+    }
+
+    .corner-file-inner {
+        font-family: var(--font-typewriter);
+        font-size: 0.6rem;
+        color: var(--amber);
+        border: 1px solid var(--amber-dim);
+        padding: 8px 14px;
+        line-height: 1.8;
+        letter-spacing: 1px;
+    }
+
+    @media (max-width: 600px) {
+        .features-row { flex-wrap: wrap; }
+        .corner-file { display: none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="home-wrap">
+    <canvas id="rain-canvas"></canvas>
+    <div class="city-silhouette"></div>
+    <div class="street-light"></div>
+
+    <div class="home-content">
+        <div class="precinct-tag">⬛ SQL City Homicide Division &nbsp;·&nbsp; Case No. 2018-0115</div>
+
+        <div class="home-logo">
+            <span class="sql">SQL</span>
+            <span class="detective">DETECTIVE</span>
+        </div>
+
+        <div class="divider-ornament"><span>◆</span></div>
+
+        <p class="home-tagline">
+            A murder has been committed in <span class="highlight">SQL City</span>.<br>
+            The only way to catch the killer is to <span class="highlight">query the truth</span>.
+        </p>
+
+        <div class="case-stamp">CLASSIFIED — ACTIVE INVESTIGATION</div>
+
+        <br>
+        <a href="/start" class="start-btn">BEGIN INVESTIGATION</a>
+
+        <div class="features-row">
+            <div class="feature-pill"><span class="dot"></span> 10 TRAINING CASES</div>
+            <div class="feature-pill"><span class="dot"></span> LIVE SQL EDITOR</div>
+            <div class="feature-pill"><span class="dot"></span> MURDER MYSTERY</div>
+            <div class="feature-pill"><span class="dot"></span> HINT SYSTEM</div>
+        </div>
+    </div>
+
+    <div class="corner-file">
+        <div class="corner-file-inner">
+            VICTIM: UNKNOWN<br>
+            DATE: JAN 15, 2018<br>
+            LOCATION: SQL CITY<br>
+            STATUS: UNSOLVED ██<br>
+            DETECTIVE: YOU
+        </div>
+    </div>
+</div>
+
+<script>
+// Rain effect
+const canvas = document.getElementById('rain-canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const drops = Array.from({length: 120}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    speed: 4 + Math.random() * 6,
+    length: 15 + Math.random() * 25,
+    opacity: 0.2 + Math.random() * 0.4
+}));
+
+function drawRain() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drops.forEach(d => {
+        ctx.beginPath();
+        ctx.moveTo(d.x, d.y);
+        ctx.lineTo(d.x - 1, d.y + d.length);
+        ctx.strokeStyle = `rgba(180, 160, 120, ${d.opacity})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+        d.y += d.speed;
+        if (d.y > canvas.height) { d.y = -d.length; d.x = Math.random() * canvas.width; }
+    });
+    requestAnimationFrame(drawRain);
+}
+drawRain();
+window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+});
+</script>
+{% endblock %}

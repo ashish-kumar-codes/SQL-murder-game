@@ -1,0 +1,727 @@
+{% extends "base.html" %}
+{% block title %}Murder Mystery — SQL Detective{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .mystery-layout {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        min-height: calc(100vh - 56px);
+    }
+
+    /* ── CASE BOARD SIDEBAR ── */
+    .case-board {
+        background: #0a0808;
+        border-right: 1px solid var(--border);
+        padding: 1.5rem;
+        position: sticky;
+        top: 56px;
+        height: calc(100vh - 56px);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
+    }
+
+    .board-title {
+        font-family: var(--font-display);
+        font-size: 1.3rem;
+        letter-spacing: 4px;
+        color: var(--red-bright);
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--red-dim);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .board-section-title {
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        letter-spacing: 3px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        margin-bottom: 0.4rem;
+    }
+
+    /* Schema panel */
+    .schema-panel {}
+
+    .table-item {
+        border: 1px solid var(--border);
+        margin-bottom: 0.4rem;
+        overflow: hidden;
+    }
+
+    .table-header {
+        background: #111;
+        padding: 7px 10px;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        color: var(--amber);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        letter-spacing: 1px;
+        transition: background 0.15s;
+        user-select: none;
+    }
+    .table-header:hover { background: #161414; }
+
+    .table-columns {
+        display: none;
+        background: var(--bg-editor);
+        padding: 6px 10px;
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        color: var(--text-dim);
+        line-height: 1.8;
+    }
+    .table-columns.open { display: block; }
+
+    .col-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .col-name { color: var(--text-secondary); }
+    .col-type { color: var(--text-dim); font-size: 0.65rem; }
+
+    /* Hints panel */
+    .hints-section {
+        border-top: 1px solid var(--border);
+        padding-top: 1rem;
+    }
+
+    .hint-counter {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        color: var(--text-dim);
+        margin-bottom: 0.5rem;
+    }
+
+    .mystery-hint-box {
+        background: rgba(212, 160, 23, 0.05);
+        border: 1px solid var(--amber-dim);
+        padding: 10px 12px;
+        font-family: var(--font-typewriter);
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 0.5rem;
+        line-height: 1.6;
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+    .mystery-hint-box.visible { display: block; }
+
+    .mystery-hint-box .hint-num {
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        color: var(--amber);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+
+    .btn-get-hint {
+        width: 100%;
+        font-family: var(--font-typewriter);
+        font-size: 0.8rem;
+        letter-spacing: 2px;
+        background: transparent;
+        color: var(--amber);
+        border: 1px solid var(--amber-dim);
+        padding: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-transform: uppercase;
+    }
+    .btn-get-hint:hover { background: rgba(212, 160, 23, 0.1); }
+
+    /* ── MAIN MYSTERY AREA ── */
+    .mystery-main {
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        max-width: 960px;
+    }
+
+    .mystery-header {
+        animation: fadeIn 0.4s ease;
+    }
+
+    .case-tag {
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 5px;
+        color: var(--red-dim);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    .mystery-title {
+        font-family: var(--font-display);
+        font-size: clamp(2rem, 5vw, 3.5rem);
+        letter-spacing: 4px;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+
+    .mystery-title .murder { color: var(--red-bright); }
+    .mystery-title .in { color: var(--text-dim); font-size: 0.5em; }
+    .mystery-title .city { color: var(--text-primary); }
+
+    .murder-stamp {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--font-typewriter);
+        font-size: 0.8rem;
+        color: var(--red-dim);
+        border: 1px solid var(--red-dim);
+        padding: 4px 12px;
+        letter-spacing: 2px;
+        transform: rotate(-1deg);
+    }
+
+    /* Briefing */
+    .briefing-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--red-dim);
+        padding: 1.5rem;
+        animation: fadeIn 0.4s ease 0.1s both;
+    }
+
+    .briefing-label {
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        letter-spacing: 3px;
+        color: var(--red-dim);
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+    }
+
+    .briefing-text {
+        font-family: var(--font-typewriter);
+        font-size: 1rem;
+        color: var(--text-secondary);
+        line-height: 1.8;
+    }
+
+    .briefing-text strong { color: var(--amber); }
+
+    /* Editor */
+    .editor-wrapper {
+        background: var(--bg-editor);
+        border: 1px solid var(--border-bright);
+        font-family: var(--font-mono);
+        animation: fadeIn 0.4s ease 0.2s both;
+    }
+
+    .editor-topbar {
+        background: #111;
+        border-bottom: 1px solid var(--border);
+        padding: 6px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .editor-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-red { background: #c0392b; }
+    .dot-yellow { background: #d4a017; }
+    .dot-green { background: #27ae60; }
+
+    .editor-filename {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        color: var(--text-dim);
+        letter-spacing: 1px;
+        margin-left: 4px;
+    }
+
+    .editor-inner { display: flex; }
+
+    .line-numbers {
+        padding: 12px 0;
+        background: rgba(0,0,0,0.3);
+        border-right: 1px solid var(--border);
+        min-width: 44px;
+        text-align: right;
+        user-select: none;
+        font-size: 0.8rem;
+        color: var(--text-dim);
+        line-height: 1.6;
+    }
+    .line-numbers span { display: block; padding: 0 12px; }
+
+    #mystery-editor {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        padding: 12px 16px;
+        color: var(--amber);
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+        line-height: 1.6;
+        resize: none;
+        min-height: 160px;
+        caret-color: var(--red-bright);
+        width: 100%;
+    }
+    #mystery-editor::placeholder { color: var(--text-dim); }
+
+    .editor-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-run {
+        font-family: var(--font-typewriter);
+        font-size: 0.85rem;
+        letter-spacing: 2px;
+        background: var(--red);
+        color: #fff;
+        border: 1px solid var(--red-bright);
+        padding: 9px 28px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-transform: uppercase;
+    }
+    .btn-run:hover { background: var(--red-bright); transform: translateY(-1px); }
+
+    .btn-reset-editor {
+        font-family: var(--font-typewriter);
+        font-size: 0.85rem;
+        letter-spacing: 2px;
+        background: transparent;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-bright);
+        padding: 9px 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-transform: uppercase;
+    }
+    .btn-reset-editor:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+
+    /* Solution block */
+    .solution-block {
+        background: rgba(192, 57, 43, 0.05);
+        border: 1px solid var(--red-dim);
+        padding: 1.2rem 1.5rem;
+        animation: fadeIn 0.4s ease 0.3s both;
+    }
+
+    .solution-label {
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        letter-spacing: 3px;
+        color: var(--red-dim);
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+    }
+
+    .solution-example {
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        color: var(--text-dim);
+        background: rgba(0,0,0,0.3);
+        padding: 8px 12px;
+        margin-bottom: 0.75rem;
+        border-left: 2px solid var(--red-dim);
+    }
+
+    .solution-example span { color: var(--amber); }
+
+    .solution-note {
+        font-family: var(--font-typewriter);
+        font-size: 0.85rem;
+        color: var(--text-dim);
+    }
+
+    /* Results */
+    .results-area { animation: fadeIn 0.3s ease; }
+    .results-label {
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 3px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .result-count { font-size: 0.65rem; color: var(--green); letter-spacing: 1px; }
+
+    .result-table-wrap {
+        overflow-x: auto;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+    }
+
+    table.result-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+    }
+
+    table.result-table th {
+        background: #111;
+        color: var(--amber);
+        padding: 8px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-bright);
+        letter-spacing: 1px;
+        white-space: nowrap;
+        font-weight: normal;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+    }
+
+    table.result-table td {
+        padding: 7px 14px;
+        color: var(--text-secondary);
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+        white-space: nowrap;
+        max-width: 280px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    table.result-table tr:last-child td { border-bottom: none; }
+    table.result-table tr:hover td { background: rgba(255,255,255,0.02); color: var(--text-primary); }
+
+    .error-box {
+        background: rgba(192, 57, 43, 0.08);
+        border: 1px solid var(--red-dim);
+        border-left: 3px solid var(--red-bright);
+        padding: 12px 16px;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        color: var(--red-bright);
+        display: flex;
+        gap: 10px;
+    }
+
+    .solution-correct {
+        background: rgba(39, 174, 96, 0.08);
+        border: 1px solid var(--green);
+        border-left: 3px solid var(--green-bright);
+        padding: 1.5rem;
+        font-family: var(--font-typewriter);
+        font-size: 1rem;
+        color: var(--green-bright);
+        line-height: 1.8;
+        animation: fadeIn 0.4s ease;
+    }
+
+    .solution-wrong {
+        background: rgba(192, 57, 43, 0.08);
+        border: 1px solid var(--red-dim);
+        border-left: 3px solid var(--red-bright);
+        padding: 1rem 1.2rem;
+        font-family: var(--font-typewriter);
+        font-size: 0.92rem;
+        color: var(--red-bright);
+        animation: fadeIn 0.3s ease;
+    }
+
+    #results-area { display: none; }
+
+    @media (max-width: 900px) {
+        .mystery-layout { grid-template-columns: 1fr; }
+        .case-board { position: static; height: auto; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mystery-layout">
+
+    <!-- CASE BOARD SIDEBAR -->
+    <aside class="case-board">
+        <div class="board-title">📋 CASE BOARD</div>
+
+        <!-- Schema explorer -->
+        <div class="schema-panel">
+            <div class="board-section-title">// DATABASE TABLES</div>
+            <div id="schema-list">
+                <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim); padding: 8px 0;">Loading schema...</div>
+            </div>
+        </div>
+
+        <!-- Hints -->
+        <div class="hints-section">
+            <div class="board-section-title">// DETECTIVE HINTS</div>
+            <div class="hint-counter" id="hint-counter">Each hint costs 50 XP</div>
+            <button class="btn-get-hint" onclick="getMysteryHint()">💡 REQUEST HINT</button>
+            <div id="mystery-hints-container"></div>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="mystery-main">
+
+        <!-- Header -->
+        <div class="mystery-header">
+            <div class="case-tag">▸ OPEN INVESTIGATION &nbsp;·&nbsp; CASE NO. 2018-0115</div>
+            <div class="mystery-title">
+                <span class="murder">MURDER</span>
+                <span class="in"> IN </span>
+                <span class="city">SQL CITY</span>
+            </div>
+            <div class="murder-stamp">🔴 ACTIVE HOMICIDE CASE</div>
+        </div>
+
+        <!-- Briefing -->
+        <div class="briefing-card">
+            <div class="briefing-label">▸ DETECTIVE'S BRIEFING</div>
+            <div class="briefing-text">
+                <strong>There's been a murder in SQL City.</strong> A body was discovered on the morning of January 16, 2018.
+                The detective assigned to the case has given you access to the full city database — but the investigation is yours to run.<br><br>
+                You vaguely remember that the crime was a <strong>murder</strong> that occurred sometime on <strong>Jan 15, 2018</strong>
+                and that it took place in <strong>SQL City</strong>.<br><br>
+                Start by retrieving the corresponding <strong>crime scene report</strong> from the police database.
+                From there, follow the clues wherever they lead. Interview witnesses, check gym records, cross-reference
+                financial data — use every table at your disposal.<br><br>
+                When you've identified the killer, submit their full name using the solution INSERT statement below.
+            </div>
+        </div>
+
+        <!-- Editor -->
+        <div>
+            <div style="font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 3px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 0.5rem;">▸ INVESTIGATION TERMINAL</div>
+            <div class="editor-wrapper">
+                <div class="editor-topbar">
+                    <div class="editor-dot dot-red"></div>
+                    <div class="editor-dot dot-yellow"></div>
+                    <div class="editor-dot dot-green"></div>
+                    <span class="editor-filename">murder_investigation.sql</span>
+                </div>
+                <div class="editor-inner">
+                    <div class="line-numbers" id="line-numbers">
+                        <span>1</span>
+                    </div>
+                    <textarea
+                        id="mystery-editor"
+                        spellcheck="false"
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"
+                        placeholder="-- Start your investigation here...&#10;-- Tip: Query crime_scene_report first&#10;&#10;SELECT * FROM crime_scene_report&#10;WHERE type = 'murder' AND date = 20180115;"></textarea>
+                </div>
+            </div>
+            <div class="editor-actions">
+                <button class="btn-reset-editor" onclick="resetEditor()">↺ RESET</button>
+                <button class="btn-run" onclick="runQuery()">▶ RUN QUERY</button>
+                <span style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-dim); margin-left: auto;">Ctrl+Enter to run</span>
+            </div>
+        </div>
+
+        <!-- Solution block -->
+        <div class="solution-block">
+            <div class="solution-label">▸ SUBMIT YOUR SOLUTION</div>
+            <div class="solution-example">
+                INSERT INTO solution VALUES (1, '<span>Insert the name of the person you found here</span>');<br>
+                SELECT value FROM solution;
+            </div>
+            <div class="solution-note">
+                When you've identified the killer, enter the INSERT statement above with their full name, then run it.
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div id="results-area" class="results-area">
+            <div class="results-label">
+                <span>▸ QUERY RESULTS</span>
+                <span class="result-count" id="result-count"></span>
+            </div>
+            <div id="results-content"></div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+// ── SCHEMA LOADER ──────────────────────────────────────────────────────
+async function loadSchema() {
+    try {
+        const res = await fetch('/api/get_tables');
+        const data = await res.json();
+        const container = document.getElementById('schema-list');
+        container.innerHTML = '';
+
+        for (const table of data.tables) {
+            const item = document.createElement('div');
+            item.className = 'table-item';
+
+            const header = document.createElement('div');
+            header.className = 'table-header';
+            header.innerHTML = `<span>${table}</span><span>▸</span>`;
+            header.onclick = () => toggleColumns(table, colsDiv, header);
+
+            const colsDiv = document.createElement('div');
+            colsDiv.className = 'table-columns';
+            colsDiv.dataset.table = table;
+
+            item.appendChild(header);
+            item.appendChild(colsDiv);
+            container.appendChild(item);
+        }
+    } catch(e) { console.error('Schema load failed', e); }
+}
+
+async function toggleColumns(table, colsDiv, header) {
+    if (colsDiv.classList.contains('open')) {
+        colsDiv.classList.remove('open');
+        header.querySelector('span:last-child').textContent = '▸';
+        return;
+    }
+    if (!colsDiv.innerHTML) {
+        const res = await fetch(`/api/get_schema/${table}`);
+        const data = await res.json();
+        colsDiv.innerHTML = data.columns.map(c =>
+            `<div class="col-row"><span class="col-name">${c.name}</span><span class="col-type">${c.type}</span></div>`
+        ).join('');
+    }
+    colsDiv.classList.add('open');
+    header.querySelector('span:last-child').textContent = '▾';
+}
+
+loadSchema();
+
+// ── LINE NUMBERS ──────────────────────────────────────────────────────
+const editor = document.getElementById('mystery-editor');
+const lineNums = document.getElementById('line-numbers');
+
+function updateLineNumbers() {
+    const lines = editor.value.split('\n').length;
+    lineNums.innerHTML = Array.from({length: lines}, (_, i) =>
+        `<span>${i + 1}</span>`).join('');
+}
+
+editor.addEventListener('input', updateLineNumbers);
+editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        const s = editor.selectionStart, en = editor.selectionEnd;
+        editor.value = editor.value.substring(0, s) + '    ' + editor.value.substring(en);
+        editor.selectionStart = editor.selectionEnd = s + 4;
+        updateLineNumbers();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runQuery(); }
+});
+updateLineNumbers();
+
+function resetEditor() {
+    editor.value = '';
+    updateLineNumbers();
+    document.getElementById('results-area').style.display = 'none';
+}
+
+// ── HINTS ─────────────────────────────────────────────────────────────
+let hintNum = 0;
+async function getMysteryHint() {
+    hintNum++;
+    const res = await fetch(`/api/mystery_hint?num=${hintNum}`);
+    const data = await res.json();
+
+    const container = document.getElementById('mystery-hints-container');
+    const box = document.createElement('div');
+    box.className = 'mystery-hint-box visible';
+    box.innerHTML = `<div class="hint-num">▸ HINT ${hintNum}</div>${data.hint}`;
+    container.appendChild(box);
+
+    if (data.penalty > 0) {
+        const el = document.querySelector('.score-display');
+        if (el) el.textContent = `XP: ${data.score}`;
+        document.getElementById('hint-counter').textContent = `Hints used: ${hintNum} (-${hintNum * 50} XP total)`;
+    }
+}
+
+// ── RUN QUERY ─────────────────────────────────────────────────────────
+async function runQuery() {
+    const query = editor.value.trim();
+    if (!query) return;
+
+    const btn = document.querySelector('.btn-run');
+    btn.textContent = '⏳ RUNNING...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/run_query', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({query})
+        });
+        const data = await res.json();
+
+        const resultsArea = document.getElementById('results-area');
+        const resultsContent = document.getElementById('results-content');
+        const resultCount = document.getElementById('result-count');
+        resultsArea.style.display = 'block';
+
+        if (data.solution_check) {
+            resultCount.textContent = '';
+            if (data.correct) {
+                resultsContent.innerHTML = `
+                    <div class="solution-correct">
+                        🏆 ${data.message}<br><br>
+                        <a href="/result" style="color: var(--green-bright); font-family: var(--font-mono); font-size: 0.85rem; letter-spacing: 2px; text-decoration: none; border: 1px solid var(--green); padding: 8px 20px; display: inline-block; margin-top: 0.5rem;">
+                            VIEW FINAL REPORT →
+                        </a>
+                    </div>`;
+            } else {
+                resultsContent.innerHTML = `<div class="solution-wrong">🔍 ${data.message}</div>`;
+            }
+        } else if (data.error) {
+            resultCount.textContent = '';
+            resultsContent.innerHTML = `
+                <div class="error-box">
+                    <span>⚠</span>
+                    <span><strong>SQL ERROR:</strong> ${escapeHtml(data.error)}</span>
+                </div>`;
+        } else {
+            resultCount.textContent = `${data.count} ROW(S) RETURNED`;
+            resultsContent.innerHTML = renderTable(data.columns, data.rows);
+        }
+    } catch(e) {
+        document.getElementById('results-area').style.display = 'block';
+        document.getElementById('results-content').innerHTML =
+            `<div class="error-box"><span>⚠</span><span>Network error. Please try again.</span></div>`;
+    } finally {
+        btn.innerHTML = '▶ RUN QUERY';
+        btn.disabled = false;
+    }
+}
+
+function renderTable(columns, rows) {
+    if (!rows || rows.length === 0) return '<div style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-dim);padding:12px;">Query returned 0 rows.</div>';
+    let html = '<div class="result-table-wrap"><table class="result-table"><thead><tr>';
+    columns.forEach(c => { html += `<th>${escapeHtml(c)}</th>`; });
+    html += '</tr></thead><tbody>';
+    rows.forEach(row => {
+        html += '<tr>';
+        row.forEach(cell => {
+            html += `<td title="${escapeHtml(String(cell ?? ''))}">${escapeHtml(String(cell ?? 'NULL'))}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+{% endblock %}

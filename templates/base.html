@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SQL Detective{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Share+Tech+Mono&family=Bebas+Neue&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-card: #161616;
+            --bg-editor: #0d0d0d;
+            --red: #c0392b;
+            --red-bright: #e74c3c;
+            --red-dim: #7b1c12;
+            --amber: #d4a017;
+            --amber-dim: #8a6610;
+            --green: #27ae60;
+            --green-bright: #2ecc71;
+            --text-primary: #e8e0d0;
+            --text-secondary: #9a9080;
+            --text-dim: #555048;
+            --border: #2a2520;
+            --border-bright: #3d3530;
+            --string-red: rgba(192, 57, 43, 0.6);
+            --font-display: 'Bebas Neue', cursive;
+            --font-body: 'Crimson Text', serif;
+            --font-mono: 'Share Tech Mono', monospace;
+            --font-typewriter: 'Special Elite', cursive;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Grain overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.4;
+        }
+
+        /* ── NAVBAR ── */
+        .navbar {
+            background: rgba(10, 10, 10, 0.95);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 56px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-brand {
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            letter-spacing: 3px;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-brand .badge-icon {
+            color: var(--amber);
+            font-size: 1.2rem;
+        }
+
+        .nav-brand span.red { color: var(--red-bright); }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .score-display {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--amber);
+            border: 1px solid var(--amber-dim);
+            padding: 4px 12px;
+            border-radius: 2px;
+            letter-spacing: 1px;
+        }
+
+        .nav-link {
+            font-family: var(--font-typewriter);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            letter-spacing: 1px;
+            transition: color 0.2s;
+        }
+        .nav-link:hover { color: var(--red-bright); }
+
+        /* ── BUTTONS ── */
+        .btn {
+            font-family: var(--font-typewriter);
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            border: none;
+            cursor: pointer;
+            padding: 10px 24px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: var(--red);
+            color: #fff;
+            border: 1px solid var(--red-bright);
+        }
+        .btn-primary:hover {
+            background: var(--red-bright);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-bright);
+        }
+        .btn-secondary:hover {
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+        }
+
+        .btn-amber {
+            background: transparent;
+            color: var(--amber);
+            border: 1px solid var(--amber-dim);
+        }
+        .btn-amber:hover {
+            background: rgba(212, 160, 23, 0.1);
+            border-color: var(--amber);
+        }
+
+        .btn-green {
+            background: var(--green);
+            color: #fff;
+            border: 1px solid var(--green-bright);
+        }
+        .btn-green:hover {
+            background: var(--green-bright);
+            transform: translateY(-1px);
+        }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+        }
+
+        /* ── RED STRING DECORATION ── */
+        .red-line {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--red-dim), var(--red), var(--red-dim), transparent);
+            margin: 1rem 0;
+        }
+
+        /* ── FLASH MESSAGES ── */
+        .flash-success {
+            background: rgba(39, 174, 96, 0.1);
+            border: 1px solid var(--green);
+            color: var(--green-bright);
+            padding: 12px 16px;
+            margin-bottom: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        .flash-error {
+            background: rgba(192, 57, 43, 0.1);
+            border: 1px solid var(--red);
+            color: var(--red-bright);
+            padding: 12px 16px;
+            margin-bottom: 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+        /* ── CODE ── */
+        code {
+            font-family: var(--font-mono);
+            background: rgba(255,255,255,0.05);
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-size: 0.85em;
+            color: var(--amber);
+        }
+
+        /* ── ANIMATIONS ── */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            92% { opacity: 1; }
+            93% { opacity: 0.8; }
+            94% { opacity: 1; }
+            96% { opacity: 0.6; }
+            97% { opacity: 1; }
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease forwards; }
+    </style>
+    {% block extra_styles %}{% endblock %}
+</head>
+<body>
+    {% block navbar %}
+    <nav class="navbar">
+        <a href="/" class="nav-brand">
+            <span class="badge-icon">🔍</span>
+            SQL <span class="red">&nbsp;DETECTIVE</span>
+        </a>
+        <div class="nav-right">
+            {% if session.get('score') is not none %}
+            <div class="score-display">XP: {{ session.get('score', 0) }}</div>
+            {% endif %}
+            {% if session.get('levels_completed') %}
+            <a href="/mystery" class="nav-link">⚠ OPEN CASE</a>
+            {% endif %}
+            <a href="/" class="nav-link">EXIT</a>
+        </div>
+    </nav>
+    {% endblock %}
+
+    {% block content %}{% endblock %}
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

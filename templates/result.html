@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Case Closed — SQL Detective{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .result-page {
+        min-height: calc(100vh - 56px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background: radial-gradient(ellipse at center, #1a0a0a 0%, #000 70%);
+    }
+
+    .result-card {
+        max-width: 680px;
+        width: 100%;
+        background: var(--bg-card);
+        border: 1px solid var(--border-bright);
+        padding: 3rem;
+        text-align: center;
+        position: relative;
+        animation: fadeIn 0.6s ease;
+    }
+
+    /* Corner decorations */
+    .result-card::before,
+    .result-card::after {
+        content: '◆';
+        position: absolute;
+        color: var(--red-dim);
+        font-size: 0.8rem;
+    }
+    .result-card::before { top: 12px; left: 12px; }
+    .result-card::after { bottom: 12px; right: 12px; }
+
+    .badge-icon {
+        font-size: 4rem;
+        display: block;
+        margin-bottom: 1rem;
+        animation: fadeIn 0.6s ease 0.2s both;
+        filter: drop-shadow(0 0 20px rgba(212, 160, 23, 0.5));
+    }
+
+    .result-title {
+        font-family: var(--font-display);
+        font-size: 3.5rem;
+        letter-spacing: 6px;
+        color: var(--amber);
+        line-height: 1;
+        margin-bottom: 0.5rem;
+        animation: fadeIn 0.6s ease 0.3s both;
+        text-shadow: 0 0 40px rgba(212, 160, 23, 0.3);
+    }
+
+    .result-subtitle {
+        font-family: var(--font-typewriter);
+        font-size: 1rem;
+        color: var(--text-secondary);
+        letter-spacing: 3px;
+        margin-bottom: 2rem;
+        animation: fadeIn 0.6s ease 0.4s both;
+    }
+
+    .red-line-dec {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--red-dim), var(--red), var(--red-dim), transparent);
+        margin: 1.5rem 0;
+    }
+
+    .killer-reveal {
+        background: rgba(192, 57, 43, 0.08);
+        border: 1px solid var(--red-dim);
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        animation: fadeIn 0.6s ease 0.5s both;
+    }
+
+    .killer-label {
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        letter-spacing: 4px;
+        color: var(--red-dim);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    .killer-name {
+        font-family: var(--font-display);
+        font-size: 2.5rem;
+        letter-spacing: 3px;
+        color: var(--red-bright);
+        text-shadow: 0 0 30px rgba(231, 76, 60, 0.4);
+    }
+
+    .score-reveal {
+        animation: fadeIn 0.6s ease 0.6s both;
+    }
+
+    .score-big {
+        font-family: var(--font-display);
+        font-size: 4rem;
+        color: var(--green-bright);
+        letter-spacing: 4px;
+        line-height: 1;
+        text-shadow: 0 0 30px rgba(46, 204, 113, 0.3);
+    }
+
+    .score-label {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        letter-spacing: 4px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        margin-top: 4px;
+    }
+
+    .result-message {
+        font-family: var(--font-typewriter);
+        font-size: 1rem;
+        color: var(--text-secondary);
+        line-height: 1.7;
+        margin: 1.5rem 0;
+        animation: fadeIn 0.6s ease 0.7s both;
+    }
+
+    .result-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+        animation: fadeIn 0.6s ease 0.8s both;
+    }
+
+    .certificate-stamp {
+        position: absolute;
+        top: 1.5rem;
+        right: 1.5rem;
+        font-family: var(--font-typewriter);
+        font-size: 0.6rem;
+        color: var(--green);
+        border: 2px solid var(--green);
+        padding: 4px 10px;
+        letter-spacing: 2px;
+        transform: rotate(5deg);
+        opacity: 0.7;
+        animation: fadeIn 1s ease 1s both;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="result-page">
+    <div class="result-card">
+        <div class="certificate-stamp">SOLVED ✓</div>
+
+        <span class="badge-icon">🏅</span>
+
+        <div class="result-title">CASE CLOSED</div>
+        <div class="result-subtitle">SQL CITY HOMICIDE DIVISION</div>
+
+        <div class="red-line-dec"></div>
+
+        <div class="killer-reveal">
+            <div class="killer-label">▸ THE MURDERER IS</div>
+            <div class="killer-name">JEREMY HUTCHINGS</div>
+        </div>
+
+        <div class="red-line-dec"></div>
+
+        <div class="score-reveal">
+            <div class="score-big">{{ score }}</div>
+            <div class="score-label">TOTAL XP EARNED</div>
+        </div>
+
+        <div class="result-message">
+            Outstanding detective work. You successfully navigated the entire SQL City database,
+            connected the evidence, interviewed witnesses, and identified the killer using nothing
+            but your SQL skills. The SQL City Police Department thanks you for your service.
+        </div>
+
+        <div class="result-actions">
+            <a href="/" class="btn btn-secondary">↩ NEW GAME</a>
+            <a href="/mystery" class="btn btn-amber">REVIEW CASE</a>
+            <a href="/level/0" class="btn btn-primary">TRAINING AGAIN</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
