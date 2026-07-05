@@ -22,11 +22,15 @@ def get_db():
 def home():
     session.clear()
     return render_template('home.html')
-    
+
 @app.route("/google3e389395828ed8b7.html")
 def google_verification():
     return send_from_directory("static", "google3e389395828ed8b7.html")
 
+@app.route("/test")
+def test():
+    return "Working"
+    
 @app.route('/start')
 def start_game():
     session['score'] = 0
