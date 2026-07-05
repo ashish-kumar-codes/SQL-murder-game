@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, send_from_directory
 import sqlite3
 import json
 import os
@@ -22,6 +22,10 @@ def get_db():
 def home():
     session.clear()
     return render_template('home.html')
+    
+@app.route("/google3e389395828ed8b7.html")
+def google_verification():
+    return send_from_directory("static", "google3e389395828ed8b7.html")
 
 @app.route('/start')
 def start_game():
